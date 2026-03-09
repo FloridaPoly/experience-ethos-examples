@@ -1,6 +1,5 @@
 // Copyright 2021-2025 Ellucian Company L.P. and its affiliates.
 
-import React from 'react';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import { withIntl } from '../i18n/ReactIntlProviderWrapper';
 
@@ -18,9 +17,9 @@ const Page = () => {
     return (
         <Router basename={basePath}>
             <Switch>
-                <Route path="/" render={() => (
+                <Route path="/">
                     <AccountDetails/>
-                )}/>
+                </Route>
             </Switch>
         </Router>
     );
