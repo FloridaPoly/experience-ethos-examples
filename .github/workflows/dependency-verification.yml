@@ -1,0 +1,90 @@
+name: Dependency verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  extensions:
+    name: Extension - ${{ matrix.directory }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        directory:
+          - account-details-dataconnect/extension
+          - account-details/extension
+          - api-dashboard/extension
+          - emergency-contacts/extension
+          - instructor-classes-lambda/extension
+          - leave-balance-dataconnect/extension
+          - leave-balance/extension
+          - today-classes-graphql/extension
+          - today-classes-lambda/extension
+          - today-classes-node/extension
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.13.0'
+          cache: npm
+          cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+
+      - name: Install dependencies from lockfile
+        run: npm ci --ignore-scripts
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build without deployment
+        env:
+          # A publisher is required to compile, but upload remains disabled.
+          PUBLISHER: ci-validation
+        run: npm run build-prod
+
+  node-microservice:
+    name: Node microservice
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: today-classes-node/microservice
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.13.0'
+          cache: npm
+          cache-dependency-path: today-classes-node/microservice/package-lock.json
+
+      - name: Install dependencies from lockfile
+        run: npm ci --ignore-scripts
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Syntax check
+        shell: bash
+        run: find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check
